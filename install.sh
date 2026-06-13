@@ -66,6 +66,7 @@ SOUNDS=(
   "are-baap-re-yaad-aya.mp3"
   "a-few-moments-later-sponge-bob-sfx-fun.mp3"
   "depression-indian.mp3"
+  "abe-sale.mp3"
 )
 
 for sound in "${SOUNDS[@]}"; do
@@ -125,6 +126,8 @@ _CT_DIR="\$HOME/.catterm/sounds"
 _CT_MUTED=0
 _CT_LAST=""
 _CT_FAIL_STREAK=0
+_CT_SAME_FAIL=0
+_CT_LAST_FAIL_CMD=""
 _CT_SKIP="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|history|z|j)"
 
 _ct_play() { [[ \$_CT_MUTED -eq 1 ]] && return; afplay "\$_CT_DIR/\$1" &>/dev/null & }
@@ -137,15 +140,25 @@ _ct_precmd() {
   [[ -z "\$cmd" || "\$cmd" =~ \$_CT_SKIP ]] && return
   if [[ \$code -ne 0 ]]; then
     _CT_FAIL_STREAK=\$((_CT_FAIL_STREAK + 1))
+    if [[ "\$cmd" == "\$_CT_LAST_FAIL_CMD" ]]; then
+      _CT_SAME_FAIL=\$((_CT_SAME_FAIL + 1))
+    else
+      _CT_SAME_FAIL=1
+      _CT_LAST_FAIL_CMD="\$cmd"
+    fi
     if [[ \$_CT_FAIL_STREAK -eq 5 ]]; then
       python3 "\$HOME/.catterm/blackhole_eater.py"
     elif [[ \$_CT_FAIL_STREAK -gt 5 ]]; then
       _ct_play "depression-indian.mp3"
+    elif [[ \$_CT_SAME_FAIL -gt 4 ]]; then
+      _ct_play "abe-sale.mp3"
     else
       _ct_play "mka-ladle-meow-gop.mp3"
     fi
   else
     _CT_FAIL_STREAK=0
+    _CT_SAME_FAIL=0
+    _CT_LAST_FAIL_CMD=""
     if [[ "\$cmd" =~ (npm install|npm i |yarn (add|install)|pip install|brew install|pnpm (add|install)) ]]; then
       _ct_play "muhehehe.mp3"
     elif [[ "\$cmd" =~ (npm (run )?(build|compile)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
