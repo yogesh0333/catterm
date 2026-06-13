@@ -1,0 +1,19 @@
+{
+  "name": "catterm-sounds",
+  "displayName": "🐱 CatTerm Sounds",
+  "description": "Plays cat sounds when builds succeed, servers start, or things explode",
+  "version": "0.0.1",
+  "publisher": "yogesh",
+  "engines": { "vscode": "^1.60.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "catterm.toggle",
+        "title": "🐱 CatTerm: Toggle Sounds"
+      }
+    ]
+  }
+}
