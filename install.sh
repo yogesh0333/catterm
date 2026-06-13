@@ -133,7 +133,7 @@ _ct_precmd() {
   [[ -z "\$cmd" || "\$cmd" =~ \$_CT_SKIP ]] && return
   if [[ \$code -ne 0 ]]; then
     _ct_play "mka-ladle-meow-gop.mp3"
-  elif [[ "\$cmd" =~ (npm (run )?(dev|start|serve)|yarn (dev|start)|pnpm (dev|start)|npm install|npm i |yarn (add|install)|pip install|brew install) ]]; then
+  elif [[ "\$cmd" =~ (npm install|npm i |yarn (add|install)|pip install|brew install|pnpm (add|install)) ]]; then
     _ct_play "muhehehe.mp3"
   elif [[ "\$cmd" =~ (npm (run )?(build|compile)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
     _ct_play "happy-happy-happy-song.mp3"
