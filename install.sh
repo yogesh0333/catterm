@@ -63,6 +63,9 @@ SOUNDS=(
   "german-cat.mp3"
   "soulja-boy-saying-huh.mp3"
   "mka-ladle-meow-gop.mp3"
+  "are-baap-re-yaad-aya.mp3"
+  "a-few-moments-later-sponge-bob-sfx-fun.mp3"
+  "depression-indian.mp3"
 )
 
 for sound in "${SOUNDS[@]}"; do
@@ -121,6 +124,7 @@ else
 _CT_DIR="\$HOME/.catterm/sounds"
 _CT_MUTED=0
 _CT_LAST=""
+_CT_FAIL_STREAK=0
 _CT_SKIP="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|history|z|j)"
 
 _ct_play() { [[ \$_CT_MUTED -eq 1 ]] && return; afplay "\$_CT_DIR/\$1" &>/dev/null & }
@@ -132,15 +136,25 @@ _ct_precmd() {
   _CT_LAST=""
   [[ -z "\$cmd" || "\$cmd" =~ \$_CT_SKIP ]] && return
   if [[ \$code -ne 0 ]]; then
-    _ct_play "mka-ladle-meow-gop.mp3"
-  elif [[ "\$cmd" =~ (npm install|npm i |yarn (add|install)|pip install|brew install|pnpm (add|install)) ]]; then
-    _ct_play "muhehehe.mp3"
-  elif [[ "\$cmd" =~ (npm (run )?(build|compile)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
-    _ct_play "happy-happy-happy-song.mp3"
-  elif [[ "\$cmd" =~ (git (commit|push|pull|merge|rebase|clone)) ]]; then
-    _ct_play "german-cat.mp3"
+    _CT_FAIL_STREAK=\$((_CT_FAIL_STREAK + 1))
+    if [[ \$_CT_FAIL_STREAK -eq 5 ]]; then
+      python3 "\$HOME/.catterm/blackhole_eater.py"
+    elif [[ \$_CT_FAIL_STREAK -gt 5 ]]; then
+      _ct_play "depression-indian.mp3"
+    else
+      _ct_play "mka-ladle-meow-gop.mp3"
+    fi
   else
-    _ct_play "german-cat.mp3"
+    _CT_FAIL_STREAK=0
+    if [[ "\$cmd" =~ (npm install|npm i |yarn (add|install)|pip install|brew install|pnpm (add|install)) ]]; then
+      _ct_play "muhehehe.mp3"
+    elif [[ "\$cmd" =~ (npm (run )?(build|compile)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
+      _ct_play "happy-happy-happy-song.mp3"
+    elif [[ "\$cmd" =~ (git (commit|push|pull|merge|rebase|clone)) ]]; then
+      _ct_play "german-cat.mp3"
+    else
+      _ct_play "german-cat.mp3"
+    fi
   fi
 }
 
@@ -150,6 +164,7 @@ add-zsh-hook precmd  _ct_precmd  2>/dev/null
 
 catmute()   { _CT_MUTED=1; echo "🔇 CatTerm muted"; }
 catunmute() { _CT_MUTED=0; echo "🐱 CatTerm sounds ON!"; }
+catstreak() { echo "💀 Current fail streak: \$_CT_FAIL_STREAK"; }
 alias nrd='python3 \$HOME/.catterm/catcompile.py npm run dev'
 alias nrb='python3 \$HOME/.catterm/catcompile.py npm run build'
 # ──────────────────────────────────────────────────────────────────────────────
