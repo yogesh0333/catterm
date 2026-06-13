@@ -180,6 +180,43 @@ catunmute() { _CT_MUTED=0; echo "🐱 CatTerm sounds ON!"; }
 catstreak() { echo "💀 Current fail streak: \$_CT_FAIL_STREAK"; }
 alias nrd='python3 \$HOME/.catterm/catcompile.py npm run dev'
 alias nrb='python3 \$HOME/.catterm/catcompile.py npm run build'
+
+catupdate() {
+  echo "🐱 Updating CatTerm..."
+  local RCFILE="\${ZDOTDIR:-\$HOME}/.zshrc"
+  [[ ! -f "\$RCFILE" ]] && RCFILE="\$HOME/.bashrc"
+  local RAW="https://raw.githubusercontent.com/yogesh0333/catterm/main"
+
+  # 1. Download latest sounds
+  local SOUNDS=(muhehehe.mp3 happy-happy-happy-song.mp3 german-cat.mp3
+    soulja-boy-saying-huh.mp3 mka-ladle-meow-gop.mp3 are-baap-re-yaad-aya.mp3
+    "a-few-moments-later-sponge-bob-sfx-fun.mp3" depression-indian.mp3 abe-sale.mp3)
+  for s in "\${SOUNDS[@]}"; do
+    curl -fsSL "\$RAW/sounds/\$s" -o "\$HOME/.catterm/sounds/\$s" 2>/dev/null && echo "  ✓ \$s"
+  done
+
+  # 2. Download latest scripts
+  curl -fsSL "\$RAW/blackhole_eater.py" -o "\$HOME/.catterm/blackhole_eater.py" 2>/dev/null && echo "  ✓ blackhole_eater.py"
+  curl -fsSL "\$RAW/catcompile.py"      -o "\$HOME/.catterm/catcompile.py"      2>/dev/null && echo "  ✓ catcompile.py"
+
+  # 3. Update VS Code extension
+  local EXT="\$HOME/.vscode/extensions/catterm-sounds-0.0.1"
+  if [[ -d "\$EXT" ]]; then
+    curl -fsSL "\$RAW/vscode-extension/extension.js" -o "\$EXT/extension.js" 2>/dev/null && echo "  ✓ VS Code extension"
+  fi
+
+  # 4. Replace hooks block in rc file
+  if grep -q "# ── CatTerm hooks" "\$RCFILE" 2>/dev/null; then
+    # Remove old block between markers
+    sed -i '' '/# ── CatTerm hooks/,/# ─────────────────/d' "\$RCFILE"
+  fi
+
+  # 5. Re-append latest hooks
+  curl -fsSL "\$RAW/install.sh" | bash
+
+  echo ""
+  echo "🐱 CatTerm updated! Run: source \$RCFILE"
+}
 # ──────────────────────────────────────────────────────────────────────────────
 HOOKEOF
   say "Shell hooks added to $RCFILE"
