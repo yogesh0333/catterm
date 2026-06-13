@@ -1,0 +1,35 @@
+# ── CatTerm Sound Config ──────────────────────────────────────────────────────
+# Edit any path to use your own sound file.
+# Leave blank to use the default sound.
+# Supported formats: mp3, wav, aiff, ogg
+#
+# Run  catconfig  to open this file quickly.
+# Run  catupdate  to restore all defaults.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# When npm install / yarn install / pip install completes
+SOUND_INSTALL=""
+
+# When npm run build / tsc / cargo build succeeds
+SOUND_BUILD=""
+
+# When npm test / jest / pytest passes
+SOUND_TEST=""
+
+# When git commit / push / pull succeeds, or any generic command succeeds
+SOUND_GIT=""
+
+# When any command fails (1st to 4th time)
+SOUND_FAIL=""
+
+# When the SAME command fails 5+ times in a row
+SOUND_SAME_FAIL=""
+
+# When 5 consecutive failures happen — plays at start of black hole
+SOUND_STREAK5_START=""
+
+# Plays 10 seconds into the black hole animation
+SOUND_STREAK5_LATER=""
+
+# When 6th+ consecutive failure happens — depression mode
+SOUND_DEPRESSION=""

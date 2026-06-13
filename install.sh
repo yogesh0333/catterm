@@ -103,7 +103,19 @@ for sound in "${SOUNDS[@]}"; do
   fi
 done
 
-# ── 4. Copy Python script ──────────────────────────────────────────────────────
+# ── 4. Create config file (only if it doesn't exist — never overwrite) ────────
+if [[ ! -f "$INSTALL_DIR/config" ]]; then
+  if [[ -f "$REPO_DIR/config.default" ]]; then
+    cp "$REPO_DIR/config.default" "$INSTALL_DIR/config"
+  else
+    curl -fsSL "$GITHUB_RAW/config.default" -o "$INSTALL_DIR/config" 2>/dev/null
+  fi
+  say "Created ~/.catterm/config — edit to use your own sounds"
+else
+  dim "~/.catterm/config already exists — keeping your settings"
+fi
+
+# ── 5. Copy Python script ──────────────────────────────────────────────────────
 info "Installing catcompile.py ..."
 if [[ -f "$REPO_DIR/catcompile.py" ]]; then
   cp "$REPO_DIR/catcompile.py" "$INSTALL_DIR/catcompile.py"
@@ -143,6 +155,7 @@ else
 
 # ── CatTerm hooks ──────────────────────────────────────────────────────────────
 _CT_DIR="\$HOME/.catterm/sounds"
+_CT_CFG="\$HOME/.catterm/config"
 _CT_MUTED=0
 _CT_LAST=""
 _CT_FAIL_STREAK=0
@@ -150,16 +163,23 @@ _CT_SAME_FAIL=0
 _CT_LAST_FAIL_CMD=""
 _CT_SKIP="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|history|z|j)"
 
-_ct_play() {
+[[ -f "\$_CT_CFG" ]] && source "\$_CT_CFG"
+
+_ct_play_file() {
   [[ \$_CT_MUTED -eq 1 ]] && return
-  local f="\$_CT_DIR/\$1"
-  [[ ! -f "\$f" ]] && return
-  if   command -v afplay  &>/dev/null; then afplay "\$f" &>/dev/null &
-  elif command -v mpg123  &>/dev/null; then mpg123 -q "\$f" &>/dev/null &
-  elif command -v paplay  &>/dev/null; then paplay "\$f" &>/dev/null &
-  elif command -v ffplay  &>/dev/null; then ffplay -nodisp -autoexit -loglevel quiet "\$f" &>/dev/null &
-  elif command -v aplay   &>/dev/null; then aplay -q "\$f" &>/dev/null &
+  local f="\$1"; [[ ! -f "\$f" ]] && return
+  if   command -v afplay &>/dev/null; then afplay "\$f" &>/dev/null &
+  elif command -v mpg123 &>/dev/null; then mpg123 -q "\$f" &>/dev/null &
+  elif command -v paplay &>/dev/null; then paplay "\$f" &>/dev/null &
+  elif command -v ffplay &>/dev/null; then ffplay -nodisp -autoexit -loglevel quiet "\$f" &>/dev/null &
+  elif command -v aplay  &>/dev/null; then aplay -q "\$f" &>/dev/null &
   fi
+}
+
+_ct_play() {
+  local custom="\${(P)1}"
+  if [[ -n "\$custom" && -f "\$custom" ]]; then _ct_play_file "\$custom"
+  else _ct_play_file "\$_CT_DIR/\$2"; fi
 }
 
 _ct_preexec() { _CT_LAST="\$1"; }
@@ -170,33 +190,24 @@ _ct_precmd() {
   [[ -z "\$cmd" || "\$cmd" =~ \$_CT_SKIP ]] && return
   if [[ \$code -ne 0 ]]; then
     _CT_FAIL_STREAK=\$((_CT_FAIL_STREAK + 1))
-    if [[ "\$cmd" == "\$_CT_LAST_FAIL_CMD" ]]; then
-      _CT_SAME_FAIL=\$((_CT_SAME_FAIL + 1))
-    else
-      _CT_SAME_FAIL=1
-      _CT_LAST_FAIL_CMD="\$cmd"
-    fi
+    if [[ "\$cmd" == "\$_CT_LAST_FAIL_CMD" ]]; then _CT_SAME_FAIL=\$((_CT_SAME_FAIL + 1))
+    else _CT_SAME_FAIL=1; _CT_LAST_FAIL_CMD="\$cmd"; fi
     if [[ \$_CT_FAIL_STREAK -eq 5 ]]; then
       python3 "\$HOME/.catterm/blackhole_eater.py"
-    elif [[ \$_CT_FAIL_STREAK -gt 5 ]]; then
-      _ct_play "depression-indian.mp3"
-    elif [[ \$_CT_SAME_FAIL -gt 4 ]]; then
-      _ct_play "abe-sale.mp3"
-    else
-      _ct_play "mka-ladle-meow-gop.mp3"
+    elif [[ \$_CT_FAIL_STREAK -gt 5 ]]; then _ct_play SOUND_DEPRESSION "depression-indian.mp3"
+    elif [[ \$_CT_SAME_FAIL -gt 4 ]];    then _ct_play SOUND_SAME_FAIL  "abe-sale.mp3"
+    else                                       _ct_play SOUND_FAIL       "mka-ladle-meow-gop.mp3"
     fi
   else
-    _CT_FAIL_STREAK=0
-    _CT_SAME_FAIL=0
-    _CT_LAST_FAIL_CMD=""
-    if [[ "\$cmd" =~ (npm install|npm i |yarn (add|install)|pip install|brew install|pnpm (add|install)) ]]; then
-      _ct_play "muhehehe.mp3"
-    elif [[ "\$cmd" =~ (npm (run )?(build|compile)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
-      _ct_play "happy-happy-happy-song.mp3"
-    elif [[ "\$cmd" =~ (git (commit|push|pull|merge|rebase|clone)) ]]; then
-      _ct_play "german-cat.mp3"
+    _CT_FAIL_STREAK=0; _CT_SAME_FAIL=0; _CT_LAST_FAIL_CMD=""
+    if   [[ "\$cmd" =~ (npm install|npm i |yarn \(add\|install\)|pip install|brew install|pnpm \(add\|install\)) ]]; then
+      _ct_play SOUND_INSTALL "muhehehe.mp3"
+    elif [[ "\$cmd" =~ (npm \(run \)?\(build\|compile\)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
+      _ct_play SOUND_BUILD "happy-happy-happy-song.mp3"
+    elif [[ "\$cmd" =~ (git \(commit\|push\|pull\|merge\|rebase\|clone\)) ]]; then
+      _ct_play SOUND_GIT "german-cat.mp3"
     else
-      _ct_play "german-cat.mp3"
+      _ct_play SOUND_GIT "german-cat.mp3"
     fi
   fi
 }
@@ -208,6 +219,7 @@ add-zsh-hook precmd  _ct_precmd  2>/dev/null
 catmute()   { _CT_MUTED=1; echo "🔇 CatTerm muted"; }
 catunmute() { _CT_MUTED=0; echo "🐱 CatTerm sounds ON!"; }
 catstreak() { echo "💀 Current fail streak: \$_CT_FAIL_STREAK"; }
+catconfig() { \${EDITOR:-nano} "\$HOME/.catterm/config" && source "\$HOME/.catterm/config" && echo "🐱 Config reloaded!"; }
 alias nrd='python3 \$HOME/.catterm/catcompile.py npm run dev'
 alias nrb='python3 \$HOME/.catterm/catcompile.py npm run build'
 
