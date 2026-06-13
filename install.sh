@@ -42,11 +42,31 @@ echo "   ( ||||| )"
 echo "    ‾‾‾‾‾‾‾"
 echo -e "${RST}"
 
-# ── 1. Check macOS ─────────────────────────────────────────────────────────────
-if [[ "$(uname)" != "Darwin" ]]; then
-  warn "CatTerm currently supports macOS only (uses afplay for audio)"
-  warn "Linux/Windows support coming soon — PR welcome!"
-  exit 1
+# ── 1. Detect platform & audio player ─────────────────────────────────────────
+OS="$(uname -s)"
+AUDIO_PLAYER=""
+
+if [[ "$OS" == "Darwin" ]]; then
+  AUDIO_PLAYER="afplay"
+  say "Platform: macOS"
+elif [[ "$OS" == "Linux" ]]; then
+  say "Platform: Linux"
+  if command -v mpg123  &>/dev/null; then AUDIO_PLAYER="mpg123 -q"
+  elif command -v paplay &>/dev/null; then AUDIO_PLAYER="paplay"
+  elif command -v ffplay &>/dev/null; then AUDIO_PLAYER="ffplay -nodisp -autoexit -loglevel quiet"
+  elif command -v aplay  &>/dev/null; then AUDIO_PLAYER="aplay -q"
+  else
+    warn "No audio player found. Install mpg123:  sudo apt install mpg123"
+    warn "Continuing install — add mpg123 later and sounds will work."
+  fi
+elif [[ "$OS" == MINGW* || "$OS" == CYGWIN* || "$OS" == MSYS* ]]; then
+  say "Platform: Windows (Git Bash)"
+  if command -v ffplay &>/dev/null; then AUDIO_PLAYER="ffplay -nodisp -autoexit -loglevel quiet"
+  else
+    warn "Install ffmpeg and add it to PATH for sound support."
+  fi
+else
+  warn "Unknown platform: $OS — continuing, but sounds may not work."
 fi
 
 # ── 2. Create install directory ────────────────────────────────────────────────
@@ -130,7 +150,17 @@ _CT_SAME_FAIL=0
 _CT_LAST_FAIL_CMD=""
 _CT_SKIP="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|history|z|j)"
 
-_ct_play() { [[ \$_CT_MUTED -eq 1 ]] && return; afplay "\$_CT_DIR/\$1" &>/dev/null & }
+_ct_play() {
+  [[ \$_CT_MUTED -eq 1 ]] && return
+  local f="\$_CT_DIR/\$1"
+  [[ ! -f "\$f" ]] && return
+  if   command -v afplay  &>/dev/null; then afplay "\$f" &>/dev/null &
+  elif command -v mpg123  &>/dev/null; then mpg123 -q "\$f" &>/dev/null &
+  elif command -v paplay  &>/dev/null; then paplay "\$f" &>/dev/null &
+  elif command -v ffplay  &>/dev/null; then ffplay -nodisp -autoexit -loglevel quiet "\$f" &>/dev/null &
+  elif command -v aplay   &>/dev/null; then aplay -q "\$f" &>/dev/null &
+  fi
+}
 
 _ct_preexec() { _CT_LAST="\$1"; }
 
