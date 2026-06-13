@@ -16,12 +16,42 @@ def lc(a,b,t): return tuple(int(a[i]+(b[i]-a[i])*t) for i in range(3))
 def cl(v,lo,hi): return max(lo, min(hi, v))
 
 DIR = os.path.join(os.path.expanduser('~'), '.catterm', 'sounds')
+CFG = os.path.join(os.path.expanduser('~'), '.catterm', 'config')
 
-def play(f):
-    subprocess.Popen(
-        ['afplay', os.path.join(DIR, f)],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
+def _load_config():
+    cfg = {}
+    try:
+        with open(CFG) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, _, v = line.partition('=')
+                    cfg[k.strip()] = v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return cfg
+
+_CFG = _load_config()
+
+def _resolve_sound(config_key, default_filename):
+    custom = _CFG.get(config_key, '').strip()
+    if custom and os.path.isfile(custom):
+        return custom
+    return os.path.join(DIR, default_filename)
+
+def play(config_key, default_filename):
+    path = _resolve_sound(config_key, default_filename)
+    players = [
+        ['afplay', path],
+        ['mpg123', '-q', path],
+        ['paplay', path],
+        ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet', path],
+        ['aplay', '-q', path],
+    ]
+    for cmd in players:
+        if subprocess.run(['which', cmd[0]], capture_output=True).returncode == 0:
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
 
 EATING_MSGS = [
     "5 FAILURES. REALLY?",
@@ -57,7 +87,7 @@ def main():
             'sp': random.uniform(0.05, 0.25),
         })
 
-    play('are-baap-re-yaad-aya.mp3')   # play immediately
+    play('SOUND_STREAK5_START', 'are-baap-re-yaad-aya.mp3')
 
     START  = time.time()
     GROW_START = 2.5      # seconds before growth begins
@@ -100,7 +130,7 @@ def main():
             # ── Play "a few moments later" sound ─────────────────────────────
             if elapsed >= MOMENTS_AT and not moments_played:
                 moments_played = True
-                play('a-few-moments-later-sponge-bob-sfx-fun.mp3')
+                play('SOUND_STREAK5_LATER', 'a-few-moments-later-sponge-bob-sfx-fun.mp3')
 
             # ── Render frame ─────────────────────────────────────────────────
             buf = ["\033[H"]
