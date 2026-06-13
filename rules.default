@@ -1,0 +1,29 @@
+# ~/.catterm/rules — Custom sound triggers
+# ─────────────────────────────────────────────────────────────────────────────
+# Add your own rules here — one per line.
+#
+# Format:   pattern|sound
+#   pattern  zsh regex matched against the command you typed
+#   sound    filename in ~/.catterm/sounds/  OR  a full path to any MP3/WAV
+#
+# Prefix the pattern with ! to trigger on FAILURE instead of success.
+#
+# Manage rules with:
+#   catrule add 'pattern' sound.mp3   # add a rule
+#   catrule list                      # show all rules
+#   catrule remove <n>                # remove rule by number
+#
+# ── Examples (uncomment any line to enable) ───────────────────────────────────
+# docker build|german-cat.mp3
+# docker-compose up|muhehehe.mp3
+# terraform apply|muhehehe.mp3
+# terraform destroy|mka-ladle-meow-gop.mp3
+# kubectl apply|happy-happy-happy-song.mp3
+# ansible-playbook|muhehehe.mp3
+# helm (install|upgrade)|happy-happy-happy-song.mp3
+# rails db:migrate|german-cat.mp3
+# rails generate|german-cat.mp3
+# php artisan (migrate|serve)|muhehehe.mp3
+# !git push|mka-ladle-meow-gop.mp3
+# !npm run build|mka-ladle-meow-gop.mp3
+# ─────────────────────────────────────────────────────────────────────────────

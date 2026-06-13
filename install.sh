@@ -103,6 +103,18 @@ for sound in "${SOUNDS[@]}"; do
   fi
 done
 
+# ── 4a. Create rules file (only if it doesn't exist) ─────────────────────────
+if [[ ! -f "$INSTALL_DIR/rules" ]]; then
+  if [[ -f "$REPO_DIR/rules.default" ]]; then
+    cp "$REPO_DIR/rules.default" "$INSTALL_DIR/rules"
+  else
+    curl -fsSL "$GITHUB_RAW/rules.default" -o "$INSTALL_DIR/rules" 2>/dev/null
+  fi
+  say "Created ~/.catterm/rules — add your own triggers with: catrule add"
+else
+  dim "~/.catterm/rules already exists — keeping your rules"
+fi
+
 # ── 4. Create config file (only if it doesn't exist — never overwrite) ────────
 if [[ ! -f "$INSTALL_DIR/config" ]]; then
   if [[ -f "$REPO_DIR/config.default" ]]; then
@@ -151,60 +163,100 @@ MARKER="# ── CatTerm hooks ──"
 if grep -q "$MARKER" "$RCFILE" 2>/dev/null; then
   dim "Shell hooks already present — skipping"
 else
-  cat >> "$RCFILE" << HOOKEOF
+  cat >> "$RCFILE" << 'HOOKEOF'
 
 # ── CatTerm hooks ──────────────────────────────────────────────────────────────
-_CT_DIR="\$HOME/.catterm/sounds"
-_CT_CFG="\$HOME/.catterm/config"
+_CT_DIR="$HOME/.catterm/sounds"
+_CT_CFG="$HOME/.catterm/config"
+_CT_RULES="$HOME/.catterm/rules"
 _CT_MUTED=0
 _CT_LAST=""
 _CT_FAIL_STREAK=0
 _CT_SAME_FAIL=0
 _CT_LAST_FAIL_CMD=""
-_CT_SKIP="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|history|z|j)"
+_CT_SKIP_CMDS="^(cd|ls|ll|la|cat|echo|pwd|which|man|clear|exit|source|.|history|z|j|fg|bg|jobs|type|alias|export|unset|set)"
 
-[[ -f "\$_CT_CFG" ]] && source "\$_CT_CFG"
+[[ -f "$_CT_CFG" ]] && source "$_CT_CFG"
 
 _ct_play_file() {
-  [[ \$_CT_MUTED -eq 1 ]] && return
-  local f="\$1"; [[ ! -f "\$f" ]] && return
-  if   command -v afplay &>/dev/null; then afplay "\$f" &>/dev/null &
-  elif command -v mpg123 &>/dev/null; then mpg123 -q "\$f" &>/dev/null &
-  elif command -v paplay &>/dev/null; then paplay "\$f" &>/dev/null &
-  elif command -v ffplay &>/dev/null; then ffplay -nodisp -autoexit -loglevel quiet "\$f" &>/dev/null &
-  elif command -v aplay  &>/dev/null; then aplay -q "\$f" &>/dev/null &
+  [[ $_CT_MUTED -eq 1 ]] && return
+  local f="$1"; [[ ! -f "$f" ]] && return
+  if   command -v afplay &>/dev/null; then afplay "$f" &>/dev/null &
+  elif command -v mpg123 &>/dev/null; then mpg123 -q "$f" &>/dev/null &
+  elif command -v paplay &>/dev/null; then paplay "$f" &>/dev/null &
+  elif command -v ffplay &>/dev/null; then ffplay -nodisp -autoexit -loglevel quiet "$f" &>/dev/null &
+  elif command -v aplay  &>/dev/null; then aplay -q "$f" &>/dev/null &
   fi
 }
 
 _ct_play() {
-  local custom="\${(P)1}"
-  if [[ -n "\$custom" && -f "\$custom" ]]; then _ct_play_file "\$custom"
-  else _ct_play_file "\$_CT_DIR/\$2"; fi
+  local custom="${(P)1}"
+  if [[ -n "$custom" && -f "$custom" ]]; then _ct_play_file "$custom"
+  else _ct_play_file "$_CT_DIR/$2"; fi
 }
 
-_ct_preexec() { _CT_LAST="\$1"; }
+_ct_check_custom_rules() {
+  local cmd="$1" code="$2"
+  [[ ! -f "$_CT_RULES" ]] && return 1
+  while IFS='|' read -r pattern sound; do
+    [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+    pattern="${pattern## }"; pattern="${pattern%% }"
+    sound="${sound## }"; sound="${sound%% }"
+    [[ -z "$sound" ]] && continue
+    if [[ "$pattern" == \!* ]]; then
+      [[ $code -eq 0 ]] && continue
+      pattern="${pattern#!}"
+    else
+      [[ $code -ne 0 ]] && continue
+    fi
+    if [[ "$cmd" =~ $pattern ]]; then
+      if [[ -f "$sound" ]]; then _ct_play_file "$sound"
+      else _ct_play_file "$_CT_DIR/$sound"; fi
+      return 0
+    fi
+  done < "$_CT_RULES"
+  return 1
+}
+
+_ct_preexec() { _CT_LAST="$1"; }
 
 _ct_precmd() {
-  local code=\$? cmd="\$_CT_LAST"
+  local code=$? cmd="$_CT_LAST"
   _CT_LAST=""
-  [[ -z "\$cmd" || "\$cmd" =~ \$_CT_SKIP ]] && return
-  if [[ \$code -ne 0 ]]; then
-    _CT_FAIL_STREAK=\$((_CT_FAIL_STREAK + 1))
-    if [[ "\$cmd" == "\$_CT_LAST_FAIL_CMD" ]]; then _CT_SAME_FAIL=\$((_CT_SAME_FAIL + 1))
-    else _CT_SAME_FAIL=1; _CT_LAST_FAIL_CMD="\$cmd"; fi
-    if [[ \$_CT_FAIL_STREAK -eq 5 ]]; then
-      python3 "\$HOME/.catterm/blackhole_eater.py"
-    elif [[ \$_CT_FAIL_STREAK -gt 5 ]]; then _ct_play SOUND_DEPRESSION "depression-indian.mp3"
-    elif [[ \$_CT_SAME_FAIL -gt 4 ]];    then _ct_play SOUND_SAME_FAIL  "abe-sale.mp3"
-    else                                       _ct_play SOUND_FAIL       "mka-ladle-meow-gop.mp3"
+  [[ -z "$cmd" ]] && return
+  [[ "$cmd" =~ $_CT_SKIP_CMDS ]] && return
+
+  if [[ $code -ne 0 ]]; then
+    _CT_FAIL_STREAK=$((_CT_FAIL_STREAK + 1))
+    if [[ "$cmd" == "$_CT_LAST_FAIL_CMD" ]]; then _CT_SAME_FAIL=$((_CT_SAME_FAIL + 1))
+    else _CT_SAME_FAIL=1; _CT_LAST_FAIL_CMD="$cmd"; fi
+    if   [[ $_CT_FAIL_STREAK -eq 5 ]]; then python3 "$HOME/.catterm/blackhole_eater.py"
+    elif [[ $_CT_FAIL_STREAK -gt 5 ]]; then _ct_play SOUND_DEPRESSION "depression-indian.mp3"
+    elif [[ $_CT_SAME_FAIL -gt 4 ]];   then _ct_play SOUND_SAME_FAIL  "abe-sale.mp3"
+    elif ! _ct_check_custom_rules "$cmd" "$code"; then _ct_play SOUND_FAIL "mka-ladle-meow-gop.mp3"
     fi
   else
     _CT_FAIL_STREAK=0; _CT_SAME_FAIL=0; _CT_LAST_FAIL_CMD=""
-    if   [[ "\$cmd" =~ (npm install|npm i |yarn \(add\|install\)|pip install|brew install|pnpm \(add\|install\)) ]]; then
+    _ct_check_custom_rules "$cmd" "$code" && return
+    if   [[ "$cmd" =~ (npm (install|i )|yarn (add|install)|pnpm (add|install)) ]]; then
       _ct_play SOUND_INSTALL "muhehehe.mp3"
-    elif [[ "\$cmd" =~ (npm \(run \)?\(build\|compile\)|yarn build|tsc|cargo build|go build|make|pytest|jest|npm test) ]]; then
+    elif [[ "$cmd" =~ (pip3? install|poetry (add|install)|pipenv install|conda install|uv (add|install|sync|pip install)) ]]; then
+      _ct_play SOUND_INSTALL "muhehehe.mp3"
+    elif [[ "$cmd" =~ (gem install|bundle (install|add)|cargo add|composer (install|require)|dotnet (restore|add package)|flutter pub (get|upgrade)|swift package (resolve|update)|go (get|mod (tidy|download|vendor))|brew (install|upgrade)|apt(-get)? install|dnf install|pacman -S|apk add) ]]; then
+      _ct_play SOUND_INSTALL "muhehehe.mp3"
+    elif [[ "$cmd" =~ (npm (run )?(build|compile)|yarn (build|compile)|pnpm (run )?(build|compile)|tsc|vite build|esbuild) ]]; then
       _ct_play SOUND_BUILD "happy-happy-happy-song.mp3"
-    elif [[ "\$cmd" =~ (git \(commit\|push\|pull\|merge\|rebase\|clone\)) ]]; then
+    elif [[ "$cmd" =~ (cargo (build|compile|check)|go build|go install|go generate) ]]; then
+      _ct_play SOUND_BUILD "happy-happy-happy-song.mp3"
+    elif [[ "$cmd" =~ (mvn (package|compile|install)|gradle (build|assemble)|\.\/gradlew (build|assemble)|dotnet (build|publish)) ]]; then
+      _ct_play SOUND_BUILD "happy-happy-happy-song.mp3"
+    elif [[ "$cmd" =~ (flutter build|swift build|xcodebuild|docker build|python3? -m build|rake (build|compile)|^make( |$)|cmake|ninja) ]]; then
+      _ct_play SOUND_BUILD "happy-happy-happy-song.mp3"
+    elif [[ "$cmd" =~ (npm test|yarn test|pnpm test|jest|vitest|pytest|python3? -m pytest) ]]; then
+      _ct_play SOUND_TEST "happy-happy-happy-song.mp3"
+    elif [[ "$cmd" =~ (cargo test|go test|rspec|phpunit|pest|dotnet test|flutter test|swift test|gradle test|\.\/gradlew test|mvn test) ]]; then
+      _ct_play SOUND_TEST "happy-happy-happy-song.mp3"
+    elif [[ "$cmd" =~ (git (commit|push|pull|merge|rebase|clone|fetch|stash|tag|cherry-pick)) ]]; then
       _ct_play SOUND_GIT "german-cat.mp3"
     else
       _ct_play SOUND_GIT "german-cat.mp3"
@@ -218,46 +270,71 @@ add-zsh-hook precmd  _ct_precmd  2>/dev/null
 
 catmute()   { _CT_MUTED=1; echo "🔇 CatTerm muted"; }
 catunmute() { _CT_MUTED=0; echo "🐱 CatTerm sounds ON!"; }
-catstreak() { echo "💀 Current fail streak: \$_CT_FAIL_STREAK"; }
-catconfig() { \${EDITOR:-nano} "\$HOME/.catterm/config" && source "\$HOME/.catterm/config" && echo "🐱 Config reloaded!"; }
-alias nrd='python3 \$HOME/.catterm/catcompile.py npm run dev'
-alias nrb='python3 \$HOME/.catterm/catcompile.py npm run build'
+catstreak() { echo "💀 Current fail streak: $_CT_FAIL_STREAK"; }
+catconfig() { ${EDITOR:-nano} "$HOME/.catterm/config" && source "$HOME/.catterm/config" && echo "🐱 Config reloaded!"; }
+
+catrule() {
+  local rules="$HOME/.catterm/rules"
+  case "$1" in
+    add)
+      [[ -z "$2" || -z "$3" ]] && echo "Usage: catrule add <pattern> <sound>" && return 1
+      echo "${2}|${3}" >> "$rules" && echo "  ✓ Rule added: $2 → $3"
+      ;;
+    list)
+      echo "Custom rules (from ~/.catterm/rules):"
+      local n=0
+      while IFS='|' read -r pat snd; do
+        [[ -z "$pat" || "$pat" == \#* ]] && continue
+        n=$(( n + 1 ))
+        local type="success"
+        [[ "$pat" == \!* ]] && type="fail   " && pat="${pat#!}"
+        printf "  %2d  [%s]  %-30s →  %s\n" $n $type "$pat" "$snd"
+      done < "$rules"
+      [[ $n -eq 0 ]] && echo "  (no rules yet — run: catrule add <pattern> <sound>)"
+      ;;
+    remove)
+      [[ -z "$2" ]] && echo "Usage: catrule remove <number>" && return 1
+      local tmpf=$(mktemp) n=0 target=$2
+      while IFS='|' read -r pat snd; do
+        if [[ -z "$pat" || "$pat" == \#* ]]; then echo "$pat${snd:+|$snd}" >> "$tmpf"; continue; fi
+        n=$(( n + 1 ))
+        [[ $n -ne $target ]] && echo "$pat|$snd" >> "$tmpf"
+      done < "$rules"
+      mv "$tmpf" "$rules" && echo "  ✓ Rule $2 removed"
+      ;;
+    *)
+      echo "Usage:"
+      echo "  catrule add <pattern> <sound>   # sound = filename or full path"
+      echo "  catrule list                    # show all custom rules"
+      echo "  catrule remove <n>              # remove rule by number"
+      echo ""
+      echo "Examples:"
+      echo "  catrule add 'docker build'     german-cat.mp3"
+      echo "  catrule add 'terraform apply'  muhehehe.mp3"
+      echo "  catrule add '!git push'        mka-ladle-meow-gop.mp3"
+      ;;
+  esac
+}
 
 catupdate() {
   echo "🐱 Updating CatTerm..."
-  local RCFILE="\${ZDOTDIR:-\$HOME}/.zshrc"
-  [[ ! -f "\$RCFILE" ]] && RCFILE="\$HOME/.bashrc"
+  local RCFILE="${ZDOTDIR:-$HOME}/.zshrc"
+  [[ ! -f "$RCFILE" ]] && RCFILE="$HOME/.bashrc"
   local RAW="https://raw.githubusercontent.com/yogesh0333/catterm/main"
-
-  # 1. Download latest sounds
   local SOUNDS=(muhehehe.mp3 happy-happy-happy-song.mp3 german-cat.mp3
     soulja-boy-saying-huh.mp3 mka-ladle-meow-gop.mp3 are-baap-re-yaad-aya.mp3
     "a-few-moments-later-sponge-bob-sfx-fun.mp3" depression-indian.mp3 abe-sale.mp3)
-  for s in "\${SOUNDS[@]}"; do
-    curl -fsSL "\$RAW/sounds/\$s" -o "\$HOME/.catterm/sounds/\$s" 2>/dev/null && echo "  ✓ \$s"
+  for s in "${SOUNDS[@]}"; do
+    curl -fsSL "$RAW/sounds/$s" -o "$HOME/.catterm/sounds/$s" 2>/dev/null && echo "  ✓ $s"
   done
-
-  # 2. Download latest scripts
-  curl -fsSL "\$RAW/blackhole_eater.py" -o "\$HOME/.catterm/blackhole_eater.py" 2>/dev/null && echo "  ✓ blackhole_eater.py"
-  curl -fsSL "\$RAW/catcompile.py"      -o "\$HOME/.catterm/catcompile.py"      2>/dev/null && echo "  ✓ catcompile.py"
-
-  # 3. Update VS Code extension
-  local EXT="\$HOME/.vscode/extensions/catterm-sounds-0.0.1"
-  if [[ -d "\$EXT" ]]; then
-    curl -fsSL "\$RAW/vscode-extension/extension.js" -o "\$EXT/extension.js" 2>/dev/null && echo "  ✓ VS Code extension"
-  fi
-
-  # 4. Replace hooks block in rc file
-  if grep -q "# ── CatTerm hooks" "\$RCFILE" 2>/dev/null; then
-    # Remove old block between markers
-    sed -i '' '/# ── CatTerm hooks/,/# ─────────────────/d' "\$RCFILE"
-  fi
-
-  # 5. Re-append latest hooks
-  curl -fsSL "\$RAW/install.sh" | bash
-
-  echo ""
-  echo "🐱 CatTerm updated! Run: source \$RCFILE"
+  curl -fsSL "$RAW/blackhole_eater.py" -o "$HOME/.catterm/blackhole_eater.py" 2>/dev/null && echo "  ✓ blackhole_eater.py"
+  curl -fsSL "$RAW/catcompile.py"      -o "$HOME/.catterm/catcompile.py"      2>/dev/null && echo "  ✓ catcompile.py"
+  [[ ! -f "$HOME/.catterm/rules" ]] && curl -fsSL "$RAW/rules.default" -o "$HOME/.catterm/rules" 2>/dev/null && echo "  ✓ rules (new)"
+  local EXT="$HOME/.vscode/extensions/catterm-sounds-0.0.1"
+  [[ -d "$EXT" ]] && curl -fsSL "$RAW/vscode-extension/extension.js" -o "$EXT/extension.js" 2>/dev/null && echo "  ✓ VS Code extension"
+  sed -i '' '/# ── CatTerm hooks/,/# ─────────────────/d' "$RCFILE" 2>/dev/null
+  curl -fsSL "$RAW/install.sh" | bash
+  echo "🐱 Done! Run: source $RCFILE"
 }
 # ──────────────────────────────────────────────────────────────────────────────
 HOOKEOF

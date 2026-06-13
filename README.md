@@ -112,14 +112,33 @@ Re-downloads everything — sounds, scripts, VS Code extension, and replaces zsh
 
 | Sound | When it plays |
 |---|---|
-| `muhehehe.mp3` | `npm install` done · dev server ready · `yarn install` |
-| `happy-happy-happy-song.mp3` | `npm run build` success · tests pass · `tsc` done |
-| `german-cat.mp3` | `git commit/push/pull` · any other successful command |
+| `muhehehe.mp3` | package install done — npm/yarn/pnpm/pip/cargo/gem/composer/brew/apt/go mod… |
+| `happy-happy-happy-song.mp3` | build or tests pass — tsc/cargo/go/mvn/gradle/dotnet/flutter/xcodebuild/pytest/jest… |
+| `german-cat.mp3` | `git commit/push/pull/merge/fetch` · any other successful command |
 | `mka-ladle-meow-gop.mp3` | command fails (1st–4th time) |
 | `abe-sale.mp3` | **same command fails 5+ times** in a row |
 | `are-baap-re-yaad-aya.mp3` | **5 consecutive failures** — triggers black hole |
 | `a-few-moments-later...mp3` | 10 seconds into the black hole animation |
 | `depression-indian.mp3` | 6th+ consecutive failure — you're in depression mode now |
+
+### Built-in language support
+
+CatTerm understands tools from every major ecosystem out of the box:
+
+| Stack | Install trigger | Build trigger | Test trigger |
+|---|---|---|---|
+| **JS/TS** | npm i, yarn add, pnpm add | tsc, vite build, esbuild | jest, vitest, npm test |
+| **Python** | pip install, poetry, pipenv, uv, conda | python -m build, pyinstaller | pytest |
+| **Rust** | cargo add, cargo fetch | cargo build/check | cargo test |
+| **Go** | go get, go mod tidy | go build, go install | go test |
+| **Java/Kotlin** | mvn dependency, gradle deps | mvn package, gradle build | mvn test, gradle test |
+| **Ruby** | gem install, bundle install | rake build, assets:precompile | rspec, rake test |
+| **PHP** | composer install/require | — | phpunit, pest |
+| **.NET** | dotnet restore, nuget | dotnet build/publish | dotnet test |
+| **Flutter/Dart** | flutter pub get | flutter build | flutter test |
+| **Swift/iOS** | swift package resolve | swift build, xcodebuild | swift test |
+| **Docker** | docker pull | docker build | — |
+| **System** | brew, apt, dnf, pacman, apk | make, cmake, ninja | — |
 
 ---
 
@@ -143,13 +162,42 @@ Then your terminal comes back. Hopefully.
 ## Commands
 
 ```bash
-catupdate   # pull latest version from GitHub
-catmute     # silence all sounds
-catunmute   # sounds back on
-catstreak   # show current consecutive fail count
-nrd         # npm run dev (with cat art)
-nrb         # npm run build (with cat art)
+catupdate        # pull latest version from GitHub
+catmute          # silence all sounds
+catunmute        # sounds back on
+catstreak        # show current consecutive fail count
+catconfig        # edit sound config in your $EDITOR
+catrule add      # add a custom trigger rule
+catrule list     # show your custom rules
+catrule remove   # remove a rule by number
+nrd              # npm run dev (with cat art)
+nrb              # npm run build (with cat art)
 ```
+
+---
+
+## Custom rules
+
+Add your own command → sound triggers with `catrule`:
+
+```bash
+# Trigger on success
+catrule add 'docker build'      german-cat.mp3
+catrule add 'terraform apply'   muhehehe.mp3
+catrule add 'ansible-playbook'  /path/to/boom.mp3
+
+# Trigger on failure (prefix with !)
+catrule add '!git push'         mka-ladle-meow-gop.mp3
+
+# List all rules
+catrule list
+
+# Remove rule #2
+catrule remove 2
+```
+
+Rules are stored in `~/.catterm/rules` — one per line, `pattern|sound`.
+Custom rules are checked **first** and override built-in patterns when matched.
 
 ---
 
