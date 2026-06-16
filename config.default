@@ -31,5 +31,8 @@ SOUND_STREAK5_START=""
 # Plays 10 seconds into the black hole animation
 SOUND_STREAK5_LATER=""
 
-# When 6th+ consecutive failure happens — depression mode
+# When 6th consecutive failure happens — depression mode
 SOUND_DEPRESSION=""
+
+# When 7th+ consecutive failure happens — the meow returns
+SOUND_MEOW=""

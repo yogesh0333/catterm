@@ -82,6 +82,7 @@ SOUNDS=(
   "happy-happy-happy-song.mp3"
   "german-cat.mp3"
   "soulja-boy-saying-huh.mp3"
+  "aayein-meme.mp3"
   "mka-ladle-meow-gop.mp3"
   "are-baap-re-yaad-aya.mp3"
   "a-few-moments-later-sponge-bob-sfx-fun.mp3"
@@ -231,9 +232,10 @@ _ct_precmd() {
     if [[ "$cmd" == "$_CT_LAST_FAIL_CMD" ]]; then _CT_SAME_FAIL=$((_CT_SAME_FAIL + 1))
     else _CT_SAME_FAIL=1; _CT_LAST_FAIL_CMD="$cmd"; fi
     if   [[ $_CT_FAIL_STREAK -eq 5 ]]; then python3 "$HOME/.catterm/blackhole_eater.py"
-    elif [[ $_CT_FAIL_STREAK -gt 5 ]]; then _ct_play SOUND_DEPRESSION "depression-indian.mp3"
+    elif [[ $_CT_FAIL_STREAK -eq 6 ]]; then _ct_play SOUND_DEPRESSION "depression-indian.mp3"
+    elif [[ $_CT_FAIL_STREAK -ge 7 ]]; then _ct_play SOUND_MEOW       "mka-ladle-meow-gop.mp3"
     elif [[ $_CT_SAME_FAIL -gt 4 ]];   then _ct_play SOUND_SAME_FAIL  "abe-sale.mp3"
-    elif ! _ct_check_custom_rules "$cmd" "$code"; then _ct_play SOUND_FAIL "mka-ladle-meow-gop.mp3"
+    elif ! _ct_check_custom_rules "$cmd" "$code"; then _ct_play SOUND_FAIL "aayein-meme.mp3"
     fi
   else
     _CT_FAIL_STREAK=0; _CT_SAME_FAIL=0; _CT_LAST_FAIL_CMD=""
@@ -322,8 +324,9 @@ catupdate() {
   [[ ! -f "$RCFILE" ]] && RCFILE="$HOME/.bashrc"
   local RAW="https://raw.githubusercontent.com/yogesh0333/catterm/main"
   local SOUNDS=(muhehehe.mp3 happy-happy-happy-song.mp3 german-cat.mp3
-    soulja-boy-saying-huh.mp3 mka-ladle-meow-gop.mp3 are-baap-re-yaad-aya.mp3
-    "a-few-moments-later-sponge-bob-sfx-fun.mp3" depression-indian.mp3 abe-sale.mp3)
+    soulja-boy-saying-huh.mp3 aayein-meme.mp3 mka-ladle-meow-gop.mp3
+    are-baap-re-yaad-aya.mp3 "a-few-moments-later-sponge-bob-sfx-fun.mp3"
+    depression-indian.mp3 abe-sale.mp3)
   for s in "${SOUNDS[@]}"; do
     curl -fsSL "$RAW/sounds/$s" -o "$HOME/.catterm/sounds/$s" 2>/dev/null && echo "  ✓ $s"
   done

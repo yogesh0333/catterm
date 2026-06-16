@@ -115,11 +115,12 @@ Re-downloads everything — sounds, scripts, VS Code extension, and replaces zsh
 | `muhehehe.mp3` | package install done — npm/yarn/pnpm/pip/cargo/gem/composer/brew/apt/go mod… |
 | `happy-happy-happy-song.mp3` | build or tests pass — tsc/cargo/go/mvn/gradle/dotnet/flutter/xcodebuild/pytest/jest… |
 | `german-cat.mp3` | `git commit/push/pull/merge/fetch` · any other successful command |
-| `mka-ladle-meow-gop.mp3` | command fails (1st–4th time) |
+| `aayein-meme.mp3` | command fails (1st–4th time) |
 | `abe-sale.mp3` | **same command fails 5+ times** in a row |
 | `are-baap-re-yaad-aya.mp3` | **5 consecutive failures** — triggers black hole |
 | `a-few-moments-later...mp3` | 10 seconds into the black hole animation |
-| `depression-indian.mp3` | 6th+ consecutive failure — you're in depression mode now |
+| `depression-indian.mp3` | 6th consecutive failure — depression mode |
+| `mka-ladle-meow-gop.mp3` | 7th+ consecutive failure — the meow returns |
 
 ### Built-in language support
 
